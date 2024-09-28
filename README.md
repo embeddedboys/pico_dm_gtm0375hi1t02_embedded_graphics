@@ -11,7 +11,7 @@
 
 1. Rust is needed before build this project, on linux or WSL we could install it easily by this:
     ```bash
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.    rustup.rs | sh
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
     ```
 
 2. Install toolchain for rp2040:
