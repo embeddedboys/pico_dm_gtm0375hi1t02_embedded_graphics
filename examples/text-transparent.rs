@@ -13,15 +13,12 @@ use rp_pico as bsp;
 use mipidsi::{models::ILI9486Rgb565, options::Orientation, options::Rotation};
 use mipidsi::options::ColorOrder;
 use embedded_graphics::{
-    mono_font::{ascii::FONT_10X20, MonoTextStyle},
-    pixelcolor::Rgb888,
+    mono_font::{ascii::FONT_10X20, MonoTextStyleBuilder},
+    pixelcolor::Rgb565,
     prelude::*,
-    primitives::{
-        Circle, PrimitiveStyle, PrimitiveStyleBuilder, Rectangle, StrokeAlignment, Triangle,
-    },
-    text::{Alignment, Text},
+    primitives::{Circle, PrimitiveStyle, Rectangle},
+    text::Text,
 };
-
 use display_interface_parallel_gpio::{Generic16BitBus, PGPIO16BitInterface};
 use mipidsi::Builder;
 
@@ -117,57 +114,58 @@ fn main() -> ! {
         .init(&mut delay)
         .unwrap();
 
-    // Create styles used by the drawing operations.
-    let light_blue = Rgb888::new(0x00, 0xd2, 0xff);
-    let dark_blue = Rgb888::new(0x00, 0x0f, 0x29);
-    let thin_stroke = PrimitiveStyle::with_stroke(light_blue, 2);
-    let thick_stroke = PrimitiveStyle::with_stroke(light_blue, 3);
-    let border_stroke = PrimitiveStyleBuilder::new()
-        .stroke_color(light_blue)
-        .stroke_width(5)
-        .stroke_alignment(StrokeAlignment::Inside)
+    display.clear(Rgb565::BLACK).unwrap();
+
+    Circle::new(Point::new(0, 0), 41)
+        .into_styled(PrimitiveStyle::with_fill(Rgb565::RED))
+        .draw(&mut display)
+        .unwrap();
+
+    Rectangle::new(Point::new(20, 20), Size::new(80, 60))
+        .into_styled(PrimitiveStyle::with_fill(Rgb565::RED))
+        .draw(&mut display)
+        .unwrap();
+
+    // Can also be written in the shorter form: TextStyle::new(&FONT_10X20, Rgb565::WHITE)
+    let no_background = MonoTextStyleBuilder::new()
+        .font(&FONT_10X20)
+        .text_color(Rgb565::WHITE)
         .build();
-    let fill = PrimitiveStyle::with_fill(light_blue);
-    let character_style = MonoTextStyle::new(&FONT_10X20, light_blue);
 
-    let yoffset = 14;
+    let filled_background = MonoTextStyleBuilder::new()
+        .font(&FONT_10X20)
+        .text_color(Rgb565::YELLOW)
+        .background_color(Rgb565::BLUE)
+        .build();
 
-    display.color_converted().clear(dark_blue).unwrap();
+    let inverse_background = MonoTextStyleBuilder::new()
+        .font(&FONT_10X20)
+        .text_color(Rgb565::BLUE)
+        .background_color(Rgb565::GREEN)
+        .build();
 
-    // Draw a 3px wide outline around the display.
-    display
-        .bounding_box()
-        .into_styled(border_stroke)
-        .draw(&mut display.color_converted()).unwrap();
-
-    // Draw a triangle.
-    Triangle::new(
-        Point::new(16, 16 + yoffset),
-        Point::new(16 + 16, 16 + yoffset),
-        Point::new(16 + 8, yoffset),
+    Text::new(
+        "Hello world! - no background",
+        Point::new(15, 15),
+        no_background,
     )
-    .into_styled(thin_stroke)
-    .draw(&mut display.color_converted()).unwrap();
+    .draw(&mut display)
+    .unwrap();
 
-    // Draw a filled square
-    Rectangle::new(Point::new(52, yoffset), Size::new(16, 16))
-        .into_styled(fill)
-        .draw(&mut display.color_converted()).unwrap();
-
-    // Draw a circle with a 3px wide stroke.
-    Circle::new(Point::new(88, yoffset), 17)
-        .into_styled(thick_stroke)
-        .draw(&mut display.color_converted()).unwrap();
-
-    // Draw centered text.
-    let text = "embedded-graphics";
-    Text::with_alignment(
-        text,
-        display.bounding_box().center() + Point::new(0, 15),
-        character_style,
-        Alignment::Center,
+    Text::new(
+        "Hello world! - filled background",
+        Point::new(15, 30),
+        filled_background,
     )
-    .draw(&mut display.color_converted()).unwrap();
+    .draw(&mut display)
+    .unwrap();
+
+    Text::new(
+        "Hello world! - inverse background",
+        Point::new(15, 45),
+        inverse_background,
+    )
+    .draw(&mut display).unwrap();
 
     loop {}
 }
