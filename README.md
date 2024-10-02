@@ -43,29 +43,37 @@
 cargo build -r
 ```
 
+编译指定example
+```bash
+cargo build -r --example demo-text-tga
+```
+
 ### 部署固件
+
+有两种方式将编译好的文件烧录到Pico
 
 1. 通过 CMSIS-DAP 调试器进行下载：
 
-    拷贝 `50-cmsis-dap.rules` 至 `/etc/udev/rules.d/` 下
+    你可能需要先配置udev rules才能让cmsis-dap得以识别到，复制工程目录下的`50-cmsis-dap.rules`，
+    到`/etc/udev/rules.d/`路径下，然后执行
     ```bash
     sudo udevadm control --reload-rules
     sudo udevadm trigger
     ```
 
-    然后通过如下指令下载固件到板子
+    使用如下命令通过调试器烧录，并监视RTT调试信息
     ```bash
     probe-rs run --chip RP2040 --protocol swd target/thumbv6m-none-eabi/release/rp2040-project-template
     ```
 
-2. 通过RP2040引导加载程序下载：
+2. 通过RP2040的bootloader UF2烧录
 
-    按住 Raspberry Pi Pico 上的`BOOTSEL`按钮，将 USB 电缆连接到开发板。
+    按住核心板的`BOOTSEL`按键，插入USB线，或者在连接有线的情况下，按下拓展板上的复位键，让RP2040进入UF2下载模式，再通过如下命令将UF2文件下载至RP2040。
     ```bash
     elf2uf2-rs -d target/thumbv6m-none-eabi/release/rp2040-project-template
     ```
 
-或者您也可以按照以下步骤简单地下载固件：
+或者你可以简单地运行如下命令，编译并将文件烧录到RP2040。
 
 1. 修改 `.cargo/config.toml` 中的 `runner` 以满足你的需求：
     ```toml
