@@ -5,9 +5,11 @@
 #![no_main]
 
 use bsp::entry;
+use core::fmt::Write;
 use defmt::*;
 use defmt_rtt as _;
 use fugit::RateExtU32;
+use heapless::String;
 // use cortex_m::singleton;
 use hal::{
     clocks::{ClocksManager, InitError},
@@ -30,13 +32,13 @@ const XOSC_CRYSTAL_FREQ: u32 = 12_000_000; // Typically found in BSP crates
 use rp_pico as bsp;
 
 use embedded_graphics::{
+    // Provides the necessary functions to draw on the display
     mono_font::{ascii::FONT_10X20, MonoTextStyle},
+    // Provides colors from the Rgb666 color space
     pixelcolor::Rgb888,
     prelude::*,
-    primitives::{
-        Circle, PrimitiveStyle, PrimitiveStyleBuilder, Rectangle, StrokeAlignment, Triangle,
-    },
-    text::{Alignment, Text},
+    primitives::{Arc, PrimitiveStyleBuilder, StrokeAlignment},
+    text::{Alignment, Baseline, Text, TextStyleBuilder},
 };
 use lib::{overclock, Pio16BitBus, ILI9488};
 use overclock::PLL_SYS_250MHZ;
@@ -168,63 +170,45 @@ fn main() -> ! {
     // Create styles used by the drawing operations.
     let light_blue = Rgb888::new(0x00, 0xd2, 0xff);
     let dark_blue = Rgb888::new(0x00, 0x14, 0x28);
-    let thin_stroke = PrimitiveStyle::with_stroke(light_blue, 2);
-    let thick_stroke = PrimitiveStyle::with_stroke(light_blue, 3);
-    let border_stroke = PrimitiveStyleBuilder::new()
+    let arc_stroke = PrimitiveStyleBuilder::new()
         .stroke_color(light_blue)
         .stroke_width(5)
         .stroke_alignment(StrokeAlignment::Inside)
         .build();
-    let fill = PrimitiveStyle::with_fill(light_blue);
     let character_style = MonoTextStyle::new(&FONT_10X20, light_blue);
+    let text_style = TextStyleBuilder::new()
+        .baseline(Baseline::Middle)
+        .alignment(Alignment::Center)
+        .build();
 
-    let yoffset = 14;
+    // The current progress percentage
+    let mut progress = 78;
 
-    for _ in 0..1 {
+    loop {
         display.color_converted().clear(dark_blue).unwrap();
+
+        let sweep = progress as f32 * 360.0 / 100.0;
+
+        // Draw an arc with a 5px wide stroke.
+        Arc::with_center(Point::new(240, 160), 128 - 8, 90.0.deg(), sweep.deg())
+            .into_styled(arc_stroke)
+            .draw(&mut display.color_converted())
+            .unwrap();
+
+        // Draw centered text.
+        let mut text: String<4> = String::new();
+        let _ = text.write_fmt(format_args!("{progress}%"));
+        Text::with_text_style(
+            &text,
+            display.bounding_box().center(),
+            character_style,
+            text_style,
+        )
+        .draw(&mut display.color_converted())
+        .unwrap();
+
+        progress = (progress + 1) % 101;
     }
-
-    // Draw a 3px wide outline around the display.
-    display
-        .bounding_box()
-        .into_styled(border_stroke)
-        .draw(&mut display.color_converted())
-        .unwrap();
-
-    // Draw a triangle.
-    Triangle::new(
-        Point::new(16, 16 + yoffset),
-        Point::new(16 + 16, 16 + yoffset),
-        Point::new(16 + 8, yoffset),
-    )
-    .into_styled(thin_stroke)
-    .draw(&mut display.color_converted())
-    .unwrap();
-
-    // Draw a filled square
-    Rectangle::new(Point::new(52, yoffset), Size::new(16, 16))
-        .into_styled(fill)
-        .draw(&mut display.color_converted())
-        .unwrap();
-
-    // Draw a circle with a 3px wide stroke.
-    Circle::new(Point::new(88, yoffset), 17)
-        .into_styled(thick_stroke)
-        .draw(&mut display.color_converted())
-        .unwrap();
-
-    // Draw centered text.
-    let text = "embedded-graphics";
-    Text::with_alignment(
-        text,
-        display.bounding_box().center() + Point::new(0, 15),
-        character_style,
-        Alignment::Center,
-    )
-    .draw(&mut display.color_converted())
-    .unwrap();
-
-    loop {}
 }
 
 // End of file

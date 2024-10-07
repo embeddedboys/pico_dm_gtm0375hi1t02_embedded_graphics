@@ -30,13 +30,9 @@ const XOSC_CRYSTAL_FREQ: u32 = 12_000_000; // Typically found in BSP crates
 use rp_pico as bsp;
 
 use embedded_graphics::{
-    mono_font::{ascii::FONT_10X20, MonoTextStyle},
-    pixelcolor::Rgb888,
+    pixelcolor::{Rgb565, Rgb888},
     prelude::*,
-    primitives::{
-        Circle, PrimitiveStyle, PrimitiveStyleBuilder, Rectangle, StrokeAlignment, Triangle,
-    },
-    text::{Alignment, Text},
+    primitives::{Polyline, PrimitiveStyle},
 };
 use lib::{overclock, Pio16BitBus, ILI9488};
 use overclock::PLL_SYS_250MHZ;
@@ -146,7 +142,7 @@ fn main() -> ! {
 
     let (mut pio, sm0, _, _, _) = pac.PIO0.split(&mut pac.RESETS);
     let installed = pio.install(&program.program).unwrap();
-    let (int, frac) = (1, 0); // as slow as possible (0 is interpreted as 65536)
+    let (int, frac) = (1, 0); // as fast as possible
     let (mut sm, _, tx) = rp2040_hal::pio::PIOBuilder::from_installed_program(installed)
         .side_set_pin_base(wr_pin_id)
         .out_pins(lcd_d0_pin_id, 16)
@@ -164,67 +160,32 @@ fn main() -> ! {
     let di = Pio16BitBus::new(tx, dc);
     let mut display = ILI9488::new(di, Some(rst), Some(bl), 480, 320);
     display.init(&mut delay).unwrap();
+    display.clear(Rgb565::BLACK).unwrap();
 
-    // Create styles used by the drawing operations.
-    let light_blue = Rgb888::new(0x00, 0xd2, 0xff);
-    let dark_blue = Rgb888::new(0x00, 0x14, 0x28);
-    let thin_stroke = PrimitiveStyle::with_stroke(light_blue, 2);
-    let thick_stroke = PrimitiveStyle::with_stroke(light_blue, 3);
-    let border_stroke = PrimitiveStyleBuilder::new()
-        .stroke_color(light_blue)
-        .stroke_width(5)
-        .stroke_alignment(StrokeAlignment::Inside)
-        .build();
-    let fill = PrimitiveStyle::with_fill(light_blue);
-    let character_style = MonoTextStyle::new(&FONT_10X20, light_blue);
+    const PADDING: i32 = 8;
+    let (w, h) = (176i32, 256i32);
 
-    let yoffset = 14;
+    let line_style = PrimitiveStyle::with_stroke(Rgb888::GREEN, 7);
+    let points = [
+        Point::new(PADDING, h / 2),
+        Point::new(50, h / 2),
+        Point::new(60, h / 2 - 20),
+        Point::new(70, h / 2),
+        Point::new(80, h / 2),
+        Point::new(90, h / 2 + 10),
+        Point::new(100, PADDING),
+        Point::new(110, h / 2 + 20),
+        Point::new(120, h / 2),
+        Point::new(160, h / 2),
+    ];
 
-    for _ in 0..1 {
-        display.color_converted().clear(dark_blue).unwrap();
+    Polyline::new(&points)
+        .into_styled(line_style)
+        .draw(&mut display.color_converted())
+        .unwrap();
+    loop {
+        cortex_m::asm::wfi();
     }
-
-    // Draw a 3px wide outline around the display.
-    display
-        .bounding_box()
-        .into_styled(border_stroke)
-        .draw(&mut display.color_converted())
-        .unwrap();
-
-    // Draw a triangle.
-    Triangle::new(
-        Point::new(16, 16 + yoffset),
-        Point::new(16 + 16, 16 + yoffset),
-        Point::new(16 + 8, yoffset),
-    )
-    .into_styled(thin_stroke)
-    .draw(&mut display.color_converted())
-    .unwrap();
-
-    // Draw a filled square
-    Rectangle::new(Point::new(52, yoffset), Size::new(16, 16))
-        .into_styled(fill)
-        .draw(&mut display.color_converted())
-        .unwrap();
-
-    // Draw a circle with a 3px wide stroke.
-    Circle::new(Point::new(88, yoffset), 17)
-        .into_styled(thick_stroke)
-        .draw(&mut display.color_converted())
-        .unwrap();
-
-    // Draw centered text.
-    let text = "embedded-graphics";
-    Text::with_alignment(
-        text,
-        display.bounding_box().center() + Point::new(0, 15),
-        character_style,
-        Alignment::Center,
-    )
-    .draw(&mut display.color_converted())
-    .unwrap();
-
-    loop {}
 }
 
 // End of file

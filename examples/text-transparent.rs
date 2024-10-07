@@ -220,26 +220,4 @@ fn main() -> ! {
     loop {}
 }
 
-// /// Wrapper around `Delay` to implement the embedded-hal 1.0 delay.
-// ///
-// /// This can be removed when a new version of the `cortex_m` crate is released.
-// struct DelayCompat(cortex_m::delay::Delay);
-
-// impl embedded_hal::delay::DelayNs for DelayCompat {
-//     fn delay_ns(&mut self, mut ns: u32) {
-//         while ns > 1000 {
-//             self.0.delay_us(1);
-//             ns = ns.saturating_sub(1000);
-//         }
-//     }
-
-//     fn delay_us(&mut self, us: u32) {
-//         self.0.delay_us(us);
-//     }
-
-//     fn delay_ms(&mut self, ms: u32) {
-//         self.delay_us(ms * 1000);
-//     }
-// }
-
 // End of file
