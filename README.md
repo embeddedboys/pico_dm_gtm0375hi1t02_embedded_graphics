@@ -3,9 +3,9 @@
 ## TODO
 
 - [x] 显示驱动 GPIO
-- [ ] 显示驱动 PIO
+- [x] 显示驱动 PIO
 - [ ] 显示驱动 PIO+DMA
-- [ ] 支持触摸功能
+- [x] 支持触摸功能
 
 ## 硬件要求
 
@@ -30,6 +30,7 @@
 
 3. 安装这些有助于调试和下载的工具:
     ```bash
+    cargo install flip-link
     # Useful to creating UF2 images for the RP2040 USB Bootloader
     cargo install elf2uf2-rs --locked
     # Useful for flashing over the SWD pins using a supported JTAG probe

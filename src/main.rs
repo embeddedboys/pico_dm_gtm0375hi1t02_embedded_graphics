@@ -22,8 +22,9 @@ use hal::{
     // watchdog::Watchdog,
     xosc::setup_xosc_blocking,
     Clock,
+    i2c::I2C,
 };
-use panic_halt as _;
+use panic_probe as _;
 use rp2040_hal as hal;
 
 const XOSC_CRYSTAL_FREQ: u32 = 12_000_000; // Typically found in BSP crates
@@ -39,7 +40,7 @@ use embedded_graphics::{
     text::{Alignment, Text},
 };
 use lib::{overclock, Pio16BitBus, ILI9488};
-use overclock::PLL_SYS_250MHZ;
+use overclock::overclock_configs::PLL_SYS_240MHZ;
 
 #[entry]
 fn main() -> ! {
@@ -60,7 +61,7 @@ fn main() -> ! {
     let pll_sys = setup_pll_blocking(
         pac.PLL_SYS,
         xosc.operating_frequency().into(),
-        PLL_SYS_250MHZ,
+        PLL_SYS_240MHZ,
         &mut clocks,
         &mut pac.RESETS,
     )
@@ -224,7 +225,142 @@ fn main() -> ! {
     .draw(&mut display.color_converted())
     .unwrap();
 
-    loop {}
+    let text = "touch anywhere to test";
+    Text::with_alignment(
+        text,
+        display.bounding_box().center() + Point::new(0, 30),
+        character_style,
+        Alignment::Center,
+    )
+    .draw(&mut display.color_converted())
+    .unwrap();
+
+    let i2c = I2C::i2c1(
+        pac.I2C1,
+        pins.gpio26.reconfigure(),
+        pins.gpio27.reconfigure(),
+        400.kHz(),
+        &mut pac.RESETS,
+        clocks.system_clock.freq(),
+    );
+
+    let irq_pin = pins.gpio21.into_pull_up_input();
+    let rst_pin = pins.gpio18.into_push_pull_output();
+    let mut touch = ft6236::FT6236::new(irq_pin, rst_pin, i2c).unwrap();
+    let _ = touch.init(&mut delay);
+
+    loop {
+        touch.read().map_err(|_| ()).unwrap().map(|point| {
+            // info!("x : {}, y : {}", point.0, point.1);
+            Circle::with_center(Point::new((point.0) as _, (point.1) as _), 0)
+            .into_styled(thick_stroke)
+            .draw(&mut display.color_converted())
+            .unwrap();
+        });
+    }
 }
+
+mod ft6236 {
+    use cortex_m::delay::Delay;
+    use defmt::info;
+    use embedded_hal::digital::{InputPin, OutputPin};
+    use embedded_hal::i2c::I2c;
+
+    const FT6236_DEF_ADDR: u8 =    0x38;
+    const FT6236_REG_TD_STAT: u8 = 0x02;
+    const FT6236_REG_TP1_XH: u8 =  0x03;
+    const FT6236_REG_TP1_XL: u8 =  0x04;
+    const FT6236_REG_TP1_YH: u8 =  0x05;
+    const FT6236_REG_TP1_YL: u8 =  0x06;
+
+    pub struct FT6236<IRQ: InputPin, RST: OutputPin, I2C: I2c> {
+        irq: IRQ,
+        rst: RST,
+        i2c: I2C,
+        addr: u8,
+    }
+
+    impl<PinE, IRQ: InputPin<Error = PinE>, RST: OutputPin<Error = PinE>, I2C: I2c>
+        FT6236<IRQ, RST, I2C>
+    {
+        pub fn new(irq: IRQ, rst: RST, i2c: I2C) -> Result<Self, PinE> {
+            Ok(Self {
+                irq,
+                rst,
+                i2c,
+                addr: FT6236_DEF_ADDR,
+            })
+        }
+
+        pub fn reset(&mut self, delay_source: &mut Delay) -> Result<(), PinE> {
+            self.rst.set_high()?;
+            delay_source.delay_ms(10);
+            self.rst.set_low()?;
+            delay_source.delay_ms(10);
+            self.rst.set_high()?;
+            delay_source.delay_ms(10);
+            Ok(())
+        }
+
+        pub fn init(&mut self, delay_source: &mut Delay) -> Result<(), Error<PinE, I2C::Error>> {
+            self.reset(delay_source).map_err(|e| Error::Pin(e))?;
+
+            /* This ft6236 variant has read only registers,
+             * so we shouldn't do nothing here. */
+            Ok(())
+        }
+
+        pub fn read_reg(&mut self, reg: u8) -> Result<u8, I2C::Error> {
+            let mut readbuf: [u8; 1] = [0];
+            self.i2c.write_read(self.addr, &[reg], &mut readbuf)?;
+            Ok(readbuf[0])
+        }
+
+        // pub fn write_reg(&mut self, reg: u8, val: u8) -> Result<(), I2C::Error> {
+        //     Ok(())
+        // }
+
+        pub fn is_pressed(&mut self) -> Result<bool, I2C::Error> {
+            let val = self.read_reg(FT6236_REG_TD_STAT)?;
+            Ok(val == 0x01)
+        }
+
+        pub fn read_x(&mut self) -> Result<u16, I2C::Error> {
+            let val_h = self.read_reg(FT6236_REG_TP1_YH)? as u16;
+            let val_l = self.read_reg(FT6236_REG_TP1_YL)? as u16;
+            Ok(val_h << 8 | val_l)
+        }
+
+        pub fn read_y(&mut self) -> Result<u16, I2C::Error> {
+            let val_h = (self.read_reg(FT6236_REG_TP1_XH)? & 0x1f) as u16;
+            let val_l = self.read_reg(FT6236_REG_TP1_XL)? as u16;
+            Ok(320 - (val_h << 8 | val_l))
+        }
+
+        pub fn read(&mut self) -> Result<Option<(u16, u16)>, Error<PinE, I2C::Error>> {
+            match self.is_pressed() {
+                Ok(pressed) => {
+                    if pressed {
+                        Ok(Some((
+                            self.read_x().unwrap(),
+                            self.read_y().unwrap(),
+                        )))
+                    } else {
+                        Ok(None)
+                    }
+                }
+                Err(e) => {
+                    Ok(None)
+                }
+            }
+        }
+    }
+
+    pub enum Error<PinE, TransferE> {
+        Pin(PinE),
+        I2C(TransferE),
+    }
+}
+
 
 // End of file
