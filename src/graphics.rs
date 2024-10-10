@@ -29,11 +29,9 @@ where
         for pixel in pixels {
             let x = pixel.0.x as u16;
             let y = pixel.0.y as u16;
-            let mut buf = [pixel.1.into_storage()];
-            let slice = buf.as_mut();
 
             self.set_addr_win(x, y, x, y)?;
-            self.write_data16(slice)?
+            self.write_pixels([pixel.1])?;
         }
         Ok(())
     }

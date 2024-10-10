@@ -51,9 +51,6 @@ where
     pub fn write_data(&mut self, data: DataFormat<'_>) -> Result {
         match data {
             DataFormat::U8(slice) => self.write_iter(slice.iter().copied()),
-            // DataFormat::U16(slice) => self.write_iter16(slice.iter().copied()),
-            // DataFormat::U16BE(slice) => self.write_iter16(slice.iter().copied().map(u16::to_be)),
-            DataFormat::U16LE(slice) => self.write_iter16(slice.iter().copied().map(u16::to_le)),
             DataFormat::U16LEIter(iter) => self.write_iter16(iter),
             _ => Err(DisplayError::DataFormatNotImplemented),
         }
@@ -193,29 +190,14 @@ where
     }
 
     pub fn clear(&mut self, color: Rgb565) -> Result {
-        let mut buf = [color.into_storage()];
-        let slice = buf.as_mut();
         let size = (self.size_x as u32) * (self.size_y as u32);
         self.set_addr_win(0, 0, self.size_x - 1, self.size_y - 1)?;
 
         for _ in 0..size {
-            self.write_data16(slice)?;
+            self.write_pixels([color])?;
         }
         Ok(())
     }
-    // pub fn clear<I>(&mut self, color: I) -> Result
-    // where
-    //     I: IntoIterator<Item = Rgb565>,
-    // {
-    //     self.set_addr_win(0, 0, self.size_x - 1, self.size_y - 1)?;
-    //     let size = (self.size_x as u32) * (self.size_y as u32);
-
-    //     let colors = core::iter::repeat(color).take(size.try_into().unwrap());
-    //     let mut iter = colors.into_iter().map(|c| c.into_storage());
-    //     let buf = DataFormat::U16LEIter(&mut iter);
-    //     self.di.send_data(buf)?;
-    //     Ok(())
-    // }
 
     pub fn write_pixels<I>(&mut self, colors: I) -> Result
     where
@@ -242,11 +224,6 @@ where
         for val in &seq[1..] {
             self.write_data(*val)?;
         }
-        Ok(())
-    }
-
-    pub fn write_data16(&mut self, buf: &mut [u16]) -> Result {
-        self.di.send_data(DataFormat::U16LE(buf))?;
         Ok(())
     }
 }
