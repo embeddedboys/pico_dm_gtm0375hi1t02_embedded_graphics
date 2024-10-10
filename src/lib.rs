@@ -127,7 +127,7 @@ where
 
         self.write_reg(&[0xc5, 0x00, 0x28, 0x80])?;
 
-        self.write_reg(&[0xb1, 0xb0, 0x11])?;
+        self.write_reg(&[0xb1, 0xb0, 0x14])?;
 
         self.write_reg(&[0xb4, 0x02])?;
 
@@ -175,17 +175,17 @@ where
         self.write_reg(&[
             0x2A,
             (xs >> 8) as u8,
-            (xs & 0xFF) as u8,
+            (xs) as u8,
             (xe >> 8) as u8,
-            (xe & 0xFF) as u8,
+            (xe) as u8,
         ])?;
 
         self.write_reg(&[
             0x2B,
             (ys >> 8) as u8,
-            (ys & 0xFF) as u8,
+            (ys) as u8,
             (ye >> 8) as u8,
-            (ye & 0xFF) as u8,
+            (ye) as u8,
         ])?;
 
         self.write_reg(&[0x2C])?;

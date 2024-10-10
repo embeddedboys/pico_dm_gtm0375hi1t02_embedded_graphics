@@ -31,7 +31,7 @@ use rp_pico as bsp;
 
 use embedded_graphics::{pixelcolor::Rgb565, prelude::*};
 use lib::{overclock, Pio16BitBus, ILI9488};
-use overclock::PLL_SYS_250MHZ;
+use overclock::overclock_configs::PLL_SYS_240MHZ;
 
 #[entry]
 fn main() -> ! {
@@ -52,7 +52,7 @@ fn main() -> ! {
     let pll_sys = setup_pll_blocking(
         pac.PLL_SYS,
         xosc.operating_frequency().into(),
-        PLL_SYS_250MHZ,
+        PLL_SYS_240MHZ,
         &mut clocks,
         &mut pac.RESETS,
     )

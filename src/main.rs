@@ -316,37 +316,38 @@ mod ft6236 {
             Ok(readbuf[0])
         }
 
+        pub fn read_reg_16(&mut self, reg: u8) -> Result<u16, I2C::Error> {
+            let mut readbuf: [u8; 2] = [0; 2];
+            self.i2c.write_read(self.addr, &[reg], &mut readbuf)?;
+            Ok((readbuf[0] as u16) << 8 | (readbuf[1] as u16))
+        }
+
         // pub fn write_reg(&mut self, reg: u8, val: u8) -> Result<(), I2C::Error> {
         //     Ok(())
         // }
 
         pub fn is_pressed(&mut self) -> Result<bool, I2C::Error> {
-            let val = self.read_reg(FT6236_REG_TD_STAT)?;
-            Ok(val == 0x01)
+            Ok(self.read_reg(FT6236_REG_TD_STAT)? > 0)
         }
 
         pub fn read_x(&mut self) -> Result<u16, I2C::Error> {
-            let val_h = self.read_reg(FT6236_REG_TP1_YH)? as u16;
-            let val_l = self.read_reg(FT6236_REG_TP1_YL)? as u16;
-            Ok(val_h << 8 | val_l)
+            Ok(self.read_reg_16(FT6236_REG_TP1_YH)?)
         }
 
         pub fn read_y(&mut self) -> Result<u16, I2C::Error> {
-            let val_h = (self.read_reg(FT6236_REG_TP1_XH)? & 0x1f) as u16;
-            let val_l = self.read_reg(FT6236_REG_TP1_XL)? as u16;
-            Ok(320 - (val_h << 8 | val_l))
+            Ok(320 - (self.read_reg_16(FT6236_REG_TP1_XH)? & 0x1fff))
         }
 
         pub fn read(&mut self) -> Result<Option<(u16, u16)>, Error<PinE, I2C::Error>> {
             match self.is_pressed() {
                 Ok(pressed) => {
-                    if pressed {
+                    if !pressed {
+                        Ok(None)
+                    } else {
                         Ok(Some((
                             self.read_x().unwrap(),
                             self.read_y().unwrap(),
                         )))
-                    } else {
-                        Ok(None)
                     }
                 }
                 Err(e) => {
