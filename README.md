@@ -1,4 +1,4 @@
-### Pico_DM_QD3503728 的 embedded_graphics移植
+### Pico_DM_GTM0375HI1T02 的 embedded_graphics移植
 
 ## TODO
 
@@ -10,8 +10,8 @@
 ## 硬件要求
 
 - Raspberry Pi Pico 核心板
-- Pico_DM_QD3503728 显示拓展板
-- 一根 Micro-USB 或者 USB-C 线缆
+- Pico_DM_GTM0375HI1T02 显示拓展板
+- 两根 Micro-USB 或者 USB-C 线缆（有些调试器无供电功能）
 - （与 CMSIS-DAP 兼容的 SWD 调试器）
 
 ## 软件要求

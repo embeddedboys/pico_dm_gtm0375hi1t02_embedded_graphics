@@ -1,4 +1,4 @@
-### embedded_graphics porting for Pico_DM_QD3503728
+### embedded_graphics porting for Pico_DM_GTM0375HI1T02
 
 ## TODO
 
@@ -10,7 +10,7 @@
 ## Hardware Requirements
 
 - Raspberry Pi Pico board
-- Pico_DM_QD3503728 display extends board
+- Pico_DM_GTM0375HI1T02 display extends board
 - A Micro-USB or USB-C cable
 - (A CMSIS-DAP compatible SWD debugger)
 
